@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { DollarSign, TrendingUp, Calendar, Edit, Save, X } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, Edit, Save, X, FileDown } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   Table,
   TableBody,
@@ -89,6 +91,94 @@ const Bordero = () => {
 
   const currentData = isEditing ? editedData : data;
 
+  const exportToPDF = () => {
+    if (!currentData) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Cores do sistema
+    const primaryColor: [number, number, number] = [6, 182, 212]; // cyan-500
+    const secondaryColor: [number, number, number] = [239, 68, 68]; // red-500
+    
+    // Título
+    doc.setFontSize(20);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("BORDERÔ - SÃO CARLINO COMEDY", pageWidth / 2, 20, { align: "center" });
+    
+    // Informações do Evento
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text("INFORMAÇÕES DO EVENTO", 14, 35);
+    doc.setFontSize(10);
+    doc.text(`Evento: ${currentData.eventInfo.name}`, 14, 42);
+    doc.text(`Data: ${currentData.eventInfo.date}`, 14, 48);
+    doc.text(`Local: ${currentData.eventInfo.location}`, 14, 54);
+    
+    // Resumo Financeiro
+    doc.setFontSize(12);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("RESUMO FINANCEIRO", 14, 65);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Valor Bruto Total: ${formatCurrency(currentData.totalBruto)}`, 14, 72);
+    doc.text(`Divulgação: ${formatCurrency(currentData.divulgacao)}`, 14, 78);
+    doc.text(`Total Líquido: ${formatCurrency(currentData.totalLiquido)}`, 14, 84);
+    
+    // Tabela de Receitas
+    autoTable(doc, {
+      startY: 92,
+      head: [["Origem", "Valor Bruto", "Desconto", "Valor Líquido"]],
+      body: currentData.revenues.map(r => [
+        r.origem,
+        formatCurrency(r.valorBruto),
+        formatCurrency(r.desconto),
+        formatCurrency(r.valorLiquido)
+      ]),
+      headStyles: {
+        fillColor: primaryColor,
+        textColor: [255, 255, 255],
+        fontStyle: "bold"
+      },
+      styles: {
+        fontSize: 9
+      },
+      theme: "grid"
+    });
+    
+    // Tabela de Divisão de Lucros
+    const finalY = (doc as any).lastAutoTable.finalY || 92;
+    
+    doc.setFontSize(12);
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.text("DIVISÃO DE LUCROS", 14, finalY + 15);
+    
+    autoTable(doc, {
+      startY: finalY + 20,
+      head: [["Beneficiário", "Percentual", "Valor"]],
+      body: currentData.profitDivisions.map(d => [
+        d.beneficiario,
+        `${d.percentual}%`,
+        formatCurrency(d.valor)
+      ]),
+      headStyles: {
+        fillColor: secondaryColor,
+        textColor: [255, 255, 255],
+        fontStyle: "bold"
+      },
+      styles: {
+        fontSize: 9
+      },
+      theme: "grid"
+    });
+    
+    // Salvar o PDF
+    const fileName = `bordero_${currentData.eventInfo.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+    toast.success("PDF exportado com sucesso!");
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -114,6 +204,12 @@ const Bordero = () => {
             <p className="text-muted-foreground">Fechamento de valores do evento</p>
           </div>
           <div className="flex gap-2">
+            {!isEditing && (
+              <Button onClick={exportToPDF} variant="default">
+                <FileDown className="mr-2 h-4 w-4" />
+                Exportar PDF
+              </Button>
+            )}
             {!isEditing ? (
               <Button onClick={handleEdit} variant="outline">
                 <Edit className="mr-2 h-4 w-4" />
