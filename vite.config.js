@@ -1,16 +1,13 @@
-import { defineConfig } from 'vite'import react from '@vitejs/plugin-react-swc'-swc'
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react-swc'
+import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": "/home/ubuntu/saocarlino-bordero/src",
-    },
-  },
-  resolve: {
-    alias: {
-      "@": "/home/ubuntu/saocarlino-bordero/src",
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   server: {
