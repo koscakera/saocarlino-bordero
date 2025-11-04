@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
-import { DollarSign, TrendingUp, Calendar } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, Edit, Save, X } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -15,14 +18,76 @@ import { BorderoData } from "@/types/bordero";
 
 const Bordero = () => {
   const [data, setData] = useState<BorderoData | null>(null);
+  const [editedData, setEditedData] = useState<BorderoData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     parseBorderoCSV("/data/bordero.csv")
-      .then(setData)
+      .then((parsedData) => {
+        setData(parsedData);
+        setEditedData(parsedData);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    if (editedData) {
+      setData(editedData);
+      setIsEditing(false);
+      toast.success("Valores salvos com sucesso!");
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedData(data);
+    setIsEditing(false);
+    toast.info("Edição cancelada");
+  };
+
+  const updateRevenue = (index: number, field: keyof typeof editedData.revenues[0], value: string) => {
+    if (!editedData) return;
+    
+    const numValue = parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) || 0;
+    const newRevenues = [...editedData.revenues];
+    newRevenues[index] = { ...newRevenues[index], [field]: numValue };
+    
+    // Recalcular valor líquido
+    if (field === "valorBruto" || field === "desconto") {
+      newRevenues[index].valorLiquido = newRevenues[index].valorBruto - newRevenues[index].desconto;
+    }
+    
+    // Recalcular totais
+    const totalBruto = newRevenues.reduce((sum, r) => sum + r.valorBruto, 0);
+    const totalLiquido = newRevenues.reduce((sum, r) => sum + r.valorLiquido, 0);
+    
+    setEditedData({
+      ...editedData,
+      revenues: newRevenues,
+      totalBruto,
+      totalLiquido,
+    });
+  };
+
+  const updateProfitDivision = (index: number, field: "percentual" | "valor", value: string) => {
+    if (!editedData) return;
+    
+    const numValue = parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) || 0;
+    const newDivisions = [...editedData.profitDivisions];
+    newDivisions[index] = { ...newDivisions[index], [field]: numValue };
+    
+    setEditedData({
+      ...editedData,
+      profitDivisions: newDivisions,
+    });
+  };
+
+  const currentData = isEditing ? editedData : data;
 
   if (loading) {
     return (
@@ -32,7 +97,7 @@ const Bordero = () => {
     );
   }
 
-  if (!data) {
+  if (!currentData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-muted-foreground">Erro ao carregar dados</p>
@@ -43,9 +108,30 @@ const Bordero = () => {
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">Borderô</h1>
-          <p className="text-muted-foreground">Fechamento de valores do evento</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Borderô</h1>
+            <p className="text-muted-foreground">Fechamento de valores do evento</p>
+          </div>
+          <div className="flex gap-2">
+            {!isEditing ? (
+              <Button onClick={handleEdit} variant="outline">
+                <Edit className="mr-2 h-4 w-4" />
+                Editar
+              </Button>
+            ) : (
+              <>
+                <Button onClick={handleSave} variant="default">
+                  <Save className="mr-2 h-4 w-4" />
+                  Salvar
+                </Button>
+                <Button onClick={handleCancel} variant="outline">
+                  <X className="mr-2 h-4 w-4" />
+                  Cancelar
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Event Info */}
@@ -56,15 +142,15 @@ const Bordero = () => {
           <CardContent className="space-y-2">
             <div>
               <span className="font-semibold">Evento: </span>
-              {data.eventInfo.name}
+              {currentData.eventInfo.name}
             </div>
             <div>
               <span className="font-semibold">Data: </span>
-              {data.eventInfo.date}
+              {currentData.eventInfo.date}
             </div>
             <div>
               <span className="font-semibold">Local: </span>
-              {data.eventInfo.location}
+              {currentData.eventInfo.location}
             </div>
           </CardContent>
         </Card>
@@ -73,19 +159,19 @@ const Bordero = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatsCard
             title="Valor Bruto Total"
-            value={formatCurrency(data.totalBruto)}
+            value={formatCurrency(currentData.totalBruto)}
             icon={DollarSign}
             iconColor="bg-primary"
           />
           <StatsCard
             title="Divulgação"
-            value={formatCurrency(data.divulgacao)}
+            value={formatCurrency(currentData.divulgacao)}
             icon={TrendingUp}
             iconColor="bg-secondary"
           />
           <StatsCard
             title="Total Líquido"
-            value={formatCurrency(data.totalLiquido)}
+            value={formatCurrency(currentData.totalLiquido)}
             icon={Calendar}
             iconColor="bg-accent"
           />
@@ -107,14 +193,32 @@ const Bordero = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.revenues.map((revenue, index) => (
+                {currentData.revenues.map((revenue, index) => (
                   <TableRow key={index}>
                     <TableCell className="font-medium">{revenue.origem}</TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(revenue.valorBruto)}
+                      {isEditing ? (
+                        <Input
+                          type="text"
+                          value={formatCurrency(revenue.valorBruto)}
+                          onChange={(e) => updateRevenue(index, "valorBruto", e.target.value)}
+                          className="text-right"
+                        />
+                      ) : (
+                        formatCurrency(revenue.valorBruto)
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatCurrency(revenue.desconto)}
+                      {isEditing ? (
+                        <Input
+                          type="text"
+                          value={formatCurrency(revenue.desconto)}
+                          onChange={(e) => updateRevenue(index, "desconto", e.target.value)}
+                          className="text-right"
+                        />
+                      ) : (
+                        formatCurrency(revenue.desconto)
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
                       {formatCurrency(revenue.valorLiquido)}
@@ -141,12 +245,32 @@ const Bordero = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.profitDivisions.map((division, index) => (
+                {currentData.profitDivisions.map((division, index) => (
                   <TableRow key={index}>
                     <TableCell className="font-medium">{division.beneficiario}</TableCell>
-                    <TableCell className="text-right">{division.percentual}%</TableCell>
+                    <TableCell className="text-right">
+                      {isEditing ? (
+                        <Input
+                          type="text"
+                          value={division.percentual.toString()}
+                          onChange={(e) => updateProfitDivision(index, "percentual", e.target.value)}
+                          className="text-right"
+                        />
+                      ) : (
+                        `${division.percentual}%`
+                      )}
+                    </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {formatCurrency(division.valor)}
+                      {isEditing ? (
+                        <Input
+                          type="text"
+                          value={formatCurrency(division.valor)}
+                          onChange={(e) => updateProfitDivision(index, "valor", e.target.value)}
+                          className="text-right"
+                        />
+                      ) : (
+                        formatCurrency(division.valor)
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
