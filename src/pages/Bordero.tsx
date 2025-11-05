@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DollarSign, TrendingUp, Calendar, Edit, Save, X, FileDown } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar, Edit, Save, X, FileDown, Plus } from "lucide-react";
 import { StatsCard } from "@/components/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,33 @@ const Bordero = () => {
     setEditedData(data);
     setIsEditing(false);
     toast.info("Edição cancelada");
+  };
+
+  const handleNovo = () => {
+    const novoBordero: BorderoData = {
+      eventInfo: {
+        name: "Novo Evento",
+        date: new Date().toLocaleDateString("pt-BR"),
+        location: "Local a definir"
+      },
+      revenues: [
+        { origem: "Ingressos", valorBruto: 0, desconto: 0, valorLiquido: 0 },
+        { origem: "Bar", valorBruto: 0, desconto: 0, valorLiquido: 0 }
+      ],
+      expenses: [],
+      divulgacao: 0,
+      profitDivisions: [
+        { beneficiario: "Produtor 1", percentual: 50, valor: 0 },
+        { beneficiario: "Produtor 2", percentual: 50, valor: 0 }
+      ],
+      totalBruto: 0,
+      totalLiquido: 0
+    };
+    
+    setData(novoBordero);
+    setEditedData(novoBordero);
+    setIsEditing(true);
+    toast.success("Novo borderô criado! Configure os valores.");
   };
 
   const updateRevenue = (index: number, field: keyof typeof editedData.revenues[0], value: string) => {
@@ -205,10 +232,16 @@ const Bordero = () => {
           </div>
           <div className="flex gap-2">
             {!isEditing && (
-              <Button onClick={exportToPDF} variant="default">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exportar PDF
-              </Button>
+              <>
+                <Button onClick={handleNovo} variant="secondary">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo
+                </Button>
+                <Button onClick={exportToPDF} variant="default">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exportar PDF
+                </Button>
+              </>
             )}
             {!isEditing ? (
               <Button onClick={handleEdit} variant="outline">
