@@ -33,3 +33,23 @@ export interface BorderoData {
   totalBruto: number;
   totalLiquido: number;
 }
+
+export const initialBorderoData: BorderoData = {
+  eventInfo: {
+    name: "Novo Evento",
+    date: new Date().toLocaleDateString("pt-BR"),
+    location: "Local do Evento",
+  },
+  revenues: [
+    { origem: "Vendas Sympla", valorBruto: 0, desconto: 0, valorLiquido: 0 },
+    { origem: "Vendas Pix", valorBruto: 0, desconto: 0, valorLiquido: 0 },
+  ],
+  expenses: [],
+  divulgacao: 0,
+  profitDivisions: [
+    { beneficiario: "Novo Evento", percentual: 50, valor: 0 },
+    { beneficiario: "São Carlino", percentual: 50, valor: 0 },
+  ],
+  totalBruto: 0,
+  totalLiquido: 0,
+};

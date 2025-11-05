@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseBorderoCSV, formatCurrency } from "@/utils/csvParser";
-import { BorderoData } from "@/types/bordero";
+import { BorderoData, initialBorderoData } from "@/types/bordero";
 
 const Bordero = () => {
   const [data, setData] = useState<BorderoData | null>(null);
@@ -52,6 +52,13 @@ const Bordero = () => {
     toast.info("Edição cancelada");
   };
 
+  const handleNewEvent = () => {
+    setData(initialBorderoData);
+    setEditedData(initialBorderoData);
+    setIsEditing(true);
+    toast.info("Novo evento iniciado. Preencha os dados e clique em Salvar.");
+  };
+
   const updateRevenue = (index: number, field: keyof typeof editedData.revenues[0], value: string) => {
     if (!editedData) return;
     
@@ -76,12 +83,20 @@ const Bordero = () => {
     });
   };
 
-  const updateProfitDivision = (index: number, field: "percentual" | "valor", value: string) => {
+  const updateProfitDivision = (index: number, value: string) => {
     if (!editedData) return;
     
-    const numValue = parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) || 0;
+    const percentual = parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) || 0;
     const newDivisions = [...editedData.profitDivisions];
-    newDivisions[index] = { ...newDivisions[index], [field]: numValue };
+    
+    // 1. Atualiza o percentual
+    newDivisions[index] = { ...newDivisions[index], percentual };
+    
+    // 2. Calcula o novo valor com base no total bruto
+    const valorBase = editedData.totalBruto;
+    const novoValor = (percentual / 100) * valorBase;
+    
+    newDivisions[index].valor = novoValor;
     
     setEditedData({
       ...editedData,
@@ -203,13 +218,16 @@ const Bordero = () => {
             <h1 className="text-4xl font-bold mb-2">Borderô</h1>
             <p className="text-muted-foreground">Fechamento de valores do evento</p>
           </div>
-          <div className="flex gap-2">
-            {!isEditing && (
-              <Button onClick={exportToPDF} variant="default">
-                <FileDown className="mr-2 h-4 w-4" />
-                Exportar PDF
-              </Button>
-            )}
+	          <div className="flex gap-2">
+	            <Button onClick={handleNewEvent} variant="outline">
+	              Novo Evento
+	            </Button>
+	            {!isEditing && (
+	              <Button onClick={exportToPDF} variant="default">
+	                <FileDown className="mr-2 h-4 w-4" />
+	                Exportar PDF
+	              </Button>
+	            )}
             {!isEditing ? (
               <Button onClick={handleEdit} variant="outline">
                 <Edit className="mr-2 h-4 w-4" />
@@ -349,7 +367,7 @@ const Bordero = () => {
                         <Input
                           type="text"
                           value={division.percentual.toString()}
-                          onChange={(e) => updateProfitDivision(index, "percentual", e.target.value)}
+                          onChange={(e) => updateProfitDivision(index, e.target.value)}
                           className="text-right"
                         />
                       ) : (
@@ -357,16 +375,7 @@ const Bordero = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
-                      {isEditing ? (
-                        <Input
-                          type="text"
-                          value={formatCurrency(division.valor)}
-                          onChange={(e) => updateProfitDivision(index, "valor", e.target.value)}
-                          className="text-right"
-                        />
-                      ) : (
-                        formatCurrency(division.valor)
-                      )}
+                      {formatCurrency(division.valor)}
                     </TableCell>
                   </TableRow>
                 ))}
