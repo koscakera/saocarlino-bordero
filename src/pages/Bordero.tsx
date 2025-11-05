@@ -116,6 +116,18 @@ const Bordero = () => {
     });
   };
 
+  const updateEventInfo = (field: keyof typeof editedData.eventInfo, value: string) => {
+    if (!editedData) return;
+    
+    setEditedData({
+      ...editedData,
+      eventInfo: {
+        ...editedData.eventInfo,
+        [field]: value
+      }
+    });
+  };
+
   const currentData = isEditing ? editedData : data;
 
   const exportToPDF = () => {
@@ -268,18 +280,48 @@ const Bordero = () => {
           <CardHeader>
             <CardTitle>Informações do Evento</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-4">
             <div>
               <span className="font-semibold">Evento: </span>
-              {currentData.eventInfo.name}
+              {isEditing ? (
+                <Input
+                  type="text"
+                  value={currentData.eventInfo.name}
+                  onChange={(e) => updateEventInfo("name", e.target.value)}
+                  className="mt-1"
+                  placeholder="Nome do evento"
+                />
+              ) : (
+                currentData.eventInfo.name
+              )}
             </div>
             <div>
               <span className="font-semibold">Data: </span>
-              {currentData.eventInfo.date}
+              {isEditing ? (
+                <Input
+                  type="text"
+                  value={currentData.eventInfo.date}
+                  onChange={(e) => updateEventInfo("date", e.target.value)}
+                  className="mt-1"
+                  placeholder="Data do evento"
+                />
+              ) : (
+                currentData.eventInfo.date
+              )}
             </div>
             <div>
               <span className="font-semibold">Local: </span>
-              {currentData.eventInfo.location}
+              {isEditing ? (
+                <Input
+                  type="text"
+                  value={currentData.eventInfo.location}
+                  onChange={(e) => updateEventInfo("location", e.target.value)}
+                  className="mt-1"
+                  placeholder="Local do evento"
+                />
+              ) : (
+                currentData.eventInfo.location
+              )}
             </div>
           </CardContent>
         </Card>
