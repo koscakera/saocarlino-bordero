@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { DollarSign, TrendingUp, Calendar, Edit, Save, X, FileDown, Plus } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar as CalendarIcon, Edit, Save, X, FileDown, Plus } from "lucide-react";
+import { format, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { StatsCard } from "@/components/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -56,12 +61,12 @@ const Bordero = () => {
     const novoBordero: BorderoData = {
       eventInfo: {
         name: "Novo Evento",
-        date: new Date().toLocaleDateString("pt-BR"),
+        date: format(new Date(), "dd/MM/yyyy"),
         location: "Local a definir"
       },
       revenues: [
         { origem: "Ingressos", valorBruto: 0, desconto: 0, valorLiquido: 0 },
-        { origem: "Bar", valorBruto: 0, desconto: 0, valorLiquido: 0 }
+        { origem: "Pix", valorBruto: 0, desconto: 0, valorLiquido: 0 }
       ],
       expenses: [],
       divulgacao: 0,
@@ -79,10 +84,16 @@ const Bordero = () => {
     toast.success("Novo borderô criado! Configure os valores.");
   };
 
-  const updateRevenue = (index: number, field: keyof typeof editedData.revenues[0], value: string) => {
+  const updateRevenue = (index: number, field: keyof typeof editedData.revenues[0], value: string | number) => {
     if (!editedData) return;
     
-    const numValue = parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) || 0;
+    let numValue: number;
+    if (typeof value === "string") {
+      numValue = parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) || 0;
+    } else {
+      numValue = value;
+    }
+    
     const newRevenues = [...editedData.revenues];
     newRevenues[index] = { ...newRevenues[index], [field]: numValue };
     
@@ -298,13 +309,38 @@ const Bordero = () => {
             <div>
               <span className="font-semibold">Data: </span>
               {isEditing ? (
-                <Input
-                  type="text"
-                  value={currentData.eventInfo.date}
-                  onChange={(e) => updateEventInfo("date", e.target.value)}
-                  className="mt-1"
-                  placeholder="Data do evento"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "mt-1 w-full justify-start text-left font-normal",
+                        !currentData.eventInfo.date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {currentData.eventInfo.date || <span>Selecione uma data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={
+                        currentData.eventInfo.date
+                          ? parse(currentData.eventInfo.date, "dd/MM/yyyy", new Date())
+                          : undefined
+                      }
+                      onSelect={(date) => {
+                        if (date) {
+                          updateEventInfo("date", format(date, "dd/MM/yyyy"));
+                        }
+                      }}
+                      locale={ptBR}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               ) : (
                 currentData.eventInfo.date
               )}
@@ -343,7 +379,7 @@ const Bordero = () => {
           <StatsCard
             title="Total Líquido"
             value={formatCurrency(currentData.totalLiquido)}
-            icon={Calendar}
+            icon={CalendarIcon}
             iconColor="bg-accent"
           />
         </div>
@@ -370,9 +406,10 @@ const Bordero = () => {
                     <TableCell className="text-right">
                       {isEditing ? (
                         <Input
-                          type="text"
-                          value={formatCurrency(revenue.valorBruto)}
-                          onChange={(e) => updateRevenue(index, "valorBruto", e.target.value)}
+                          type="number"
+                          step="0.01"
+                          value={revenue.valorBruto}
+                          onChange={(e) => updateRevenue(index, "valorBruto", parseFloat(e.target.value) || 0)}
                           className="text-right"
                         />
                       ) : (
@@ -382,9 +419,10 @@ const Bordero = () => {
                     <TableCell className="text-right">
                       {isEditing ? (
                         <Input
-                          type="text"
-                          value={formatCurrency(revenue.desconto)}
-                          onChange={(e) => updateRevenue(index, "desconto", e.target.value)}
+                          type="number"
+                          step="0.01"
+                          value={revenue.desconto}
+                          onChange={(e) => updateRevenue(index, "desconto", parseFloat(e.target.value) || 0)}
                           className="text-right"
                         />
                       ) : (
@@ -422,8 +460,9 @@ const Bordero = () => {
                     <TableCell className="text-right">
                       {isEditing ? (
                         <Input
-                          type="text"
-                          value={division.percentual.toString()}
+                          type="number"
+                          step="1"
+                          value={division.percentual}
                           onChange={(e) => updateProfitDivision(index, "percentual", e.target.value)}
                           className="text-right"
                         />
@@ -434,8 +473,9 @@ const Bordero = () => {
                     <TableCell className="text-right font-semibold">
                       {isEditing ? (
                         <Input
-                          type="text"
-                          value={formatCurrency(division.valor)}
+                          type="number"
+                          step="0.01"
+                          value={division.valor}
                           onChange={(e) => updateProfitDivision(index, "valor", e.target.value)}
                           className="text-right"
                         />
