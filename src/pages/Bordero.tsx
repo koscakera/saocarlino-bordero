@@ -58,9 +58,10 @@ const Bordero = () => {
   };
 
   const handleNovo = () => {
+    const nomeEvento = "Novo Evento";
     const novoBordero: BorderoData = {
       eventInfo: {
-        name: "Novo Evento",
+        name: nomeEvento,
         date: format(new Date(), "dd/MM/yyyy"),
         location: "Local a definir"
       },
@@ -71,8 +72,8 @@ const Bordero = () => {
       expenses: [],
       divulgacao: 0,
       profitDivisions: [
-        { beneficiario: "Produtor 1", percentual: 50, valor: 0 },
-        { beneficiario: "Produtor 2", percentual: 50, valor: 0 }
+        { beneficiario: nomeEvento, percentual: 50, valor: 0 },
+        { beneficiario: "SãoCarlino", percentual: 50, valor: 0 }
       ],
       totalBruto: 0,
       totalLiquido: 0
@@ -130,12 +131,22 @@ const Bordero = () => {
   const updateEventInfo = (field: keyof typeof editedData.eventInfo, value: string) => {
     if (!editedData) return;
     
+    const updatedEventInfo = {
+      ...editedData.eventInfo,
+      [field]: value
+    };
+    
+    // Se o nome do evento mudar, atualizar o primeiro beneficiário
+    const updatedProfitDivisions = field === "name" 
+      ? editedData.profitDivisions.map((div, idx) => 
+          idx === 0 ? { ...div, beneficiario: value } : div
+        )
+      : editedData.profitDivisions;
+    
     setEditedData({
       ...editedData,
-      eventInfo: {
-        ...editedData.eventInfo,
-        [field]: value
-      }
+      eventInfo: updatedEventInfo,
+      profitDivisions: updatedProfitDivisions
     });
   };
 
@@ -409,6 +420,11 @@ const Bordero = () => {
                           type="number"
                           step="0.01"
                           value={revenue.valorBruto}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.value = "";
+                            }
+                          }}
                           onChange={(e) => updateRevenue(index, "valorBruto", parseFloat(e.target.value) || 0)}
                           className="text-right"
                         />
@@ -422,6 +438,11 @@ const Bordero = () => {
                           type="number"
                           step="0.01"
                           value={revenue.desconto}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.value = "";
+                            }
+                          }}
                           onChange={(e) => updateRevenue(index, "desconto", parseFloat(e.target.value) || 0)}
                           className="text-right"
                         />
@@ -434,6 +455,12 @@ const Bordero = () => {
                     </TableCell>
                   </TableRow>
                 ))}
+                <TableRow className="border-t-2 border-primary font-bold">
+                  <TableCell colSpan={3} className="text-right">TOTAL</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(currentData.revenues.reduce((sum, r) => sum + r.valorLiquido, 0))}
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </CardContent>
@@ -463,6 +490,11 @@ const Bordero = () => {
                           type="number"
                           step="1"
                           value={division.percentual}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.value = "";
+                            }
+                          }}
                           onChange={(e) => updateProfitDivision(index, "percentual", e.target.value)}
                           className="text-right"
                         />
@@ -476,6 +508,11 @@ const Bordero = () => {
                           type="number"
                           step="0.01"
                           value={division.valor}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.value = "";
+                            }
+                          }}
                           onChange={(e) => updateProfitDivision(index, "valor", e.target.value)}
                           className="text-right"
                         />
