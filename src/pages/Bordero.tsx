@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
-import { DollarSign, TrendingUp, Calendar, Edit, Save, X, FileDown } from "lucide-react";
+import { DollarSign, TrendingUp, Calendar as CalendarIcon, Edit, Save, X, FileDown, Plus } from "lucide-react";
+import { format, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { StatsCard } from "@/components/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -52,6 +57,7 @@ const Bordero = () => {
     toast.info("Edição cancelada");
   };
 
+<<<<<<< HEAD
   const handleNewEvent = () => {
     setData(initialBorderoData);
     setEditedData(initialBorderoData);
@@ -60,9 +66,46 @@ const Bordero = () => {
   };
 
   const updateRevenue = (index: number, field: keyof typeof editedData.revenues[0], value: string) => {
+=======
+  const handleNovo = () => {
+    const nomeEvento = "Novo Evento";
+    const novoBordero: BorderoData = {
+      eventInfo: {
+        name: nomeEvento,
+        date: format(new Date(), "dd/MM/yyyy"),
+        location: "Local a definir"
+      },
+      revenues: [
+        { origem: "Ingressos", valorBruto: 0, desconto: 0, valorLiquido: 0 },
+        { origem: "Pix", valorBruto: 0, desconto: 0, valorLiquido: 0 }
+      ],
+      expenses: [],
+      divulgacao: 0,
+      profitDivisions: [
+        { beneficiario: nomeEvento, percentual: 50, valor: 0 },
+        { beneficiario: "SãoCarlino", percentual: 50, valor: 0 }
+      ],
+      totalBruto: 0,
+      totalLiquido: 0
+    };
+    
+    setData(novoBordero);
+    setEditedData(novoBordero);
+    setIsEditing(true);
+    toast.success("Novo borderô criado! Configure os valores.");
+  };
+
+  const updateRevenue = (index: number, field: keyof typeof editedData.revenues[0], value: string | number) => {
+>>>>>>> 72e53862a3a3752b5d4aeb66a3fde0a89ab0233e
     if (!editedData) return;
     
-    const numValue = parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) || 0;
+    let numValue: number;
+    if (typeof value === "string") {
+      numValue = parseFloat(value.replace(/[^\d,-]/g, "").replace(",", ".")) || 0;
+    } else {
+      numValue = value;
+    }
+    
     const newRevenues = [...editedData.revenues];
     newRevenues[index] = { ...newRevenues[index], [field]: numValue };
     
@@ -101,6 +144,28 @@ const Bordero = () => {
     setEditedData({
       ...editedData,
       profitDivisions: newDivisions,
+    });
+  };
+
+  const updateEventInfo = (field: keyof typeof editedData.eventInfo, value: string) => {
+    if (!editedData) return;
+    
+    const updatedEventInfo = {
+      ...editedData.eventInfo,
+      [field]: value
+    };
+    
+    // Se o nome do evento mudar, atualizar o primeiro beneficiário
+    const updatedProfitDivisions = field === "name" 
+      ? editedData.profitDivisions.map((div, idx) => 
+          idx === 0 ? { ...div, beneficiario: value } : div
+        )
+      : editedData.profitDivisions;
+    
+    setEditedData({
+      ...editedData,
+      eventInfo: updatedEventInfo,
+      profitDivisions: updatedProfitDivisions
     });
   };
 
@@ -218,6 +283,7 @@ const Bordero = () => {
             <h1 className="text-4xl font-bold mb-2">Borderô</h1>
             <p className="text-muted-foreground">Fechamento de valores do evento</p>
           </div>
+<<<<<<< HEAD
 	          <div className="flex gap-2">
 	            <Button onClick={handleNewEvent} variant="outline">
 	              Novo Evento
@@ -228,6 +294,21 @@ const Bordero = () => {
 	                Exportar PDF
 	              </Button>
 	            )}
+=======
+          <div className="flex gap-2">
+            {!isEditing && (
+              <>
+                <Button onClick={handleNovo} variant="secondary">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo
+                </Button>
+                <Button onClick={exportToPDF} variant="default">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Exportar PDF
+                </Button>
+              </>
+            )}
+>>>>>>> 72e53862a3a3752b5d4aeb66a3fde0a89ab0233e
             {!isEditing ? (
               <Button onClick={handleEdit} variant="outline">
                 <Edit className="mr-2 h-4 w-4" />
@@ -253,18 +334,73 @@ const Bordero = () => {
           <CardHeader>
             <CardTitle>Informações do Evento</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-4">
             <div>
               <span className="font-semibold">Evento: </span>
-              {currentData.eventInfo.name}
+              {isEditing ? (
+                <Input
+                  type="text"
+                  value={currentData.eventInfo.name}
+                  onChange={(e) => updateEventInfo("name", e.target.value)}
+                  className="mt-1"
+                  placeholder="Nome do evento"
+                />
+              ) : (
+                currentData.eventInfo.name
+              )}
             </div>
             <div>
               <span className="font-semibold">Data: </span>
-              {currentData.eventInfo.date}
+              {isEditing ? (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "mt-1 w-full justify-start text-left font-normal",
+                        !currentData.eventInfo.date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {currentData.eventInfo.date || <span>Selecione uma data</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={
+                        currentData.eventInfo.date
+                          ? parse(currentData.eventInfo.date, "dd/MM/yyyy", new Date())
+                          : undefined
+                      }
+                      onSelect={(date) => {
+                        if (date) {
+                          updateEventInfo("date", format(date, "dd/MM/yyyy"));
+                        }
+                      }}
+                      locale={ptBR}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              ) : (
+                currentData.eventInfo.date
+              )}
             </div>
             <div>
               <span className="font-semibold">Local: </span>
-              {currentData.eventInfo.location}
+              {isEditing ? (
+                <Input
+                  type="text"
+                  value={currentData.eventInfo.location}
+                  onChange={(e) => updateEventInfo("location", e.target.value)}
+                  className="mt-1"
+                  placeholder="Local do evento"
+                />
+              ) : (
+                currentData.eventInfo.location
+              )}
             </div>
           </CardContent>
         </Card>
@@ -286,7 +422,7 @@ const Bordero = () => {
           <StatsCard
             title="Total Líquido"
             value={formatCurrency(currentData.totalLiquido)}
-            icon={Calendar}
+            icon={CalendarIcon}
             iconColor="bg-accent"
           />
         </div>
@@ -313,9 +449,15 @@ const Bordero = () => {
                     <TableCell className="text-right">
                       {isEditing ? (
                         <Input
-                          type="text"
-                          value={formatCurrency(revenue.valorBruto)}
-                          onChange={(e) => updateRevenue(index, "valorBruto", e.target.value)}
+                          type="number"
+                          step="0.01"
+                          value={revenue.valorBruto}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.value = "";
+                            }
+                          }}
+                          onChange={(e) => updateRevenue(index, "valorBruto", parseFloat(e.target.value) || 0)}
                           className="text-right"
                         />
                       ) : (
@@ -325,9 +467,15 @@ const Bordero = () => {
                     <TableCell className="text-right">
                       {isEditing ? (
                         <Input
-                          type="text"
-                          value={formatCurrency(revenue.desconto)}
-                          onChange={(e) => updateRevenue(index, "desconto", e.target.value)}
+                          type="number"
+                          step="0.01"
+                          value={revenue.desconto}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.value = "";
+                            }
+                          }}
+                          onChange={(e) => updateRevenue(index, "desconto", parseFloat(e.target.value) || 0)}
                           className="text-right"
                         />
                       ) : (
@@ -339,6 +487,12 @@ const Bordero = () => {
                     </TableCell>
                   </TableRow>
                 ))}
+                <TableRow className="border-t-2 border-primary font-bold">
+                  <TableCell colSpan={3} className="text-right">TOTAL</TableCell>
+                  <TableCell className="text-right">
+                    {formatCurrency(currentData.revenues.reduce((sum, r) => sum + r.valorLiquido, 0))}
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </CardContent>
@@ -365,9 +519,24 @@ const Bordero = () => {
                     <TableCell className="text-right">
                       {isEditing ? (
                         <Input
+<<<<<<< HEAD
                           type="text"
                           value={division.percentual.toString()}
                           onChange={(e) => updateProfitDivision(index, e.target.value)}
+<<<<<<< HEAD
+=======
+=======
+                          type="number"
+                          step="1"
+                          value={division.percentual}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.value = "";
+                            }
+                          }}
+                          onChange={(e) => updateProfitDivision(index, "percentual", e.target.value)}
+>>>>>>> 97812cb8171da4a455edfabc678181a58762b587
+>>>>>>> 72e53862a3a3752b5d4aeb66a3fde0a89ab0233e
                           className="text-right"
                         />
                       ) : (
@@ -375,7 +544,30 @@ const Bordero = () => {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-semibold">
+<<<<<<< HEAD
                       {formatCurrency(division.valor)}
+=======
+<<<<<<< HEAD
+                      {formatCurrency(division.valor)}
+=======
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={division.valor}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.value = "";
+                            }
+                          }}
+                          onChange={(e) => updateProfitDivision(index, "valor", e.target.value)}
+                          className="text-right"
+                        />
+                      ) : (
+                        formatCurrency(division.valor)
+                      )}
+>>>>>>> 97812cb8171da4a455edfabc678181a58762b587
+>>>>>>> 72e53862a3a3752b5d4aeb66a3fde0a89ab0233e
                     </TableCell>
                   </TableRow>
                 ))}
